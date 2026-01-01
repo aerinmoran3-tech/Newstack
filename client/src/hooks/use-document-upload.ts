@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured, getSupabaseOrThrow } from '@/lib/supabase';
 import { useAuth, getAuthToken } from '@/lib/auth-context';
 import { useToast } from '@/hooks/use-toast';
 
@@ -31,7 +31,7 @@ export function useDocumentUpload(options: UseDocumentUploadOptions = {}) {
     docType: UploadedDocument['docType'] = 'other'
   ): Promise<UploadedDocument | null> => {
     // Allow uploads for both authenticated and guest users
-    if (!supabase) {
+    if (!isSupabaseConfigured()) {
       toast({
         title: 'Upload Error',
         description: 'Storage service is not configured',
@@ -120,7 +120,7 @@ export function useDocumentUpload(options: UseDocumentUploadOptions = {}) {
 
       const filePath = `${user!.id}/${docType}_${timestamp}_${sanitizedName}`;
 
-      const { data, error } = await supabase!.storage
+      const { data, error } = await getSupabaseOrThrow().storage
         .from('documents')
         .upload(filePath, file, {
           cacheControl: '3600',
@@ -134,7 +134,7 @@ export function useDocumentUpload(options: UseDocumentUploadOptions = {}) {
         throw error;
       }
 
-      const { data: signedUrlData } = await supabase!.storage
+      const { data: signedUrlData } = await getSupabaseOrThrow().storage
         .from('documents')
         .createSignedUrl(data.path, 60 * 60 * 24 * 365);
 
@@ -175,11 +175,11 @@ export function useDocumentUpload(options: UseDocumentUploadOptions = {}) {
 
   const removeDocument = async (docId: string) => {
     const doc = uploadedDocs.find(d => d.id === docId);
-    if (!doc || !supabase) return;
+    if (!doc || !isSupabaseConfigured()) return;
 
     try {
       if (doc.storagePath) {
-        const { error } = await supabase.storage.from('documents').remove([doc.storagePath]);
+        const { error } = await getSupabaseOrThrow().storage.from('documents').remove([doc.storagePath]);
         if (error) {
           console.warn('Storage removal warning:', error);
         }

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { User, AuthContextType, UserRole } from './types';
-import { supabase } from './supabase';
+import { supabase, isSupabaseConfigured, getSupabaseOrThrow } from './supabase';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -58,15 +58,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const initializing = useRef(true);
 
   useEffect(() => {
-    if (!supabase) {
+    if (!isSupabaseConfigured()) {
       setAuthReady(true);
       return;
     }
 
-    const init = async () => {
-      const {
-        data: { session }
-      } = await supabase.auth.getSession();
+      const init = async () => {
+        const {
+          data: { session }
+        } = await getSupabaseOrThrow().auth.getSession();
 
       if (session?.user) {
         const builtUser = await loadUserFromDB(session.user);
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription }
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = getSupabaseOrThrow().auth.onAuthStateChange(async (event, session) => {
       if (initializing.current) return;
 
       if (event === 'SIGNED_OUT') {
@@ -110,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password: string,
     rememberMe = true
   ): Promise<UserRole> => {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await getSupabaseOrThrow().auth.signInWithPassword({
       email,
       password,
       options: { shouldCreateUser: false }
@@ -119,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
 
     if (!rememberMe) {
-      await supabase.auth.refreshSession();
+      await getSupabaseOrThrow().auth.refreshSession();
     }
 
     const role = normalizeRole(
@@ -139,7 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const redirectTo =
       import.meta.env.VITE_APP_URL || window.location.origin;
 
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await getSupabaseOrThrow().auth.signUp({
       email,
       password,
       options: {
@@ -151,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
 
     if (data.user) {
-      await supabase.from('users').upsert({
+      await getSupabaseOrThrow().from('users').upsert({
         id: data.user.id,
         email,
         full_name: name,
@@ -167,7 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) throw new Error('No user');
 
     // Use server-side endpoint to change role to avoid client-side privilege escalation
-    const tokenRes = await supabase.auth.getSession();
+    const tokenRes = await getSupabaseOrThrow().auth.getSession();
     const token = tokenRes?.data?.session?.access_token || null;
 
     const resp = await fetch(`/api/admin/users/${user.id}/role`, {
@@ -189,7 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    await getSupabaseOrThrow().auth.signOut();
     setUser(null);
     setEmailVerified(false);
   };
@@ -197,7 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const resetPassword = async (email: string) => {
     const redirectTo =
       import.meta.env.VITE_APP_URL || window.location.origin;
-    await supabase.auth.resetPasswordForEmail(email, {
+    await getSupabaseOrThrow().auth.resetPasswordForEmail(email, {
       redirectTo: `${redirectTo}/reset-password`
     });
   };
@@ -208,7 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const redirectTo =
       import.meta.env.VITE_APP_URL || window.location.origin;
 
-    await supabase.auth.resend({
+    await getSupabaseOrThrow().auth.resend({
       type: 'signup',
       email: user.email,
       options: { emailRedirectTo: `${redirectTo}/auth/callback` }
@@ -244,6 +244,6 @@ export function useAuth(): AuthContextType {
 export async function getAuthToken(): Promise<string | null> {
   const {
     data: { session }
-  } = await supabase.auth.getSession();
+  } = await getSupabaseOrThrow().auth.getSession();
   return session?.access_token || null;
 }

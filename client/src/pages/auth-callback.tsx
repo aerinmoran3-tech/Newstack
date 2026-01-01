@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured, getSupabaseOrThrow } from '@/lib/supabase';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 import { Card } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Link } from 'wouter';
 import { CheckCircle } from 'lucide-react';
 
 async function fetchUserRole(userId: string): Promise<'user' | 'agent' | 'admin' | 'renter' | 'landlord' | 'property_manager'> {
-  if (!supabase) return 'renter';
+  if (!isSupabaseConfigured()) return 'renter';
   try {
     const { data } = await supabase
       .from('users')
@@ -31,7 +31,7 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        if (!supabase) {
+          if (!isSupabaseConfigured()) {
           setError('Authentication service unavailable');
           setProcessing(false);
           return;
@@ -62,7 +62,7 @@ export default function AuthCallback() {
         }
 
         if (accessToken && refreshToken) {
-          const { data, error: sessionError } = await supabase.auth.setSession({
+          const { data, error: sessionError } = await getSupabaseOrThrow().auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           });
@@ -100,7 +100,7 @@ export default function AuthCallback() {
             const isNewUser = (now.getTime() - createdAt.getTime()) < 60000;
             
             // Check if user exists in our table
-            const { data: existingUser } = await supabase
+            const { data: existingUser } = await getSupabaseOrThrow()
               .from('users')
               .select('id, role')
               .eq('id', data.user.id)
@@ -108,7 +108,7 @@ export default function AuthCallback() {
             
             if (!existingUser) {
               // New OAuth user - create profile and redirect to role selection
-              const { error: upsertError } = await supabase
+              const { error: upsertError } = await getSupabaseOrThrow()
                 .from('users')
                 .upsert({
                   id: data.user.id,
@@ -151,7 +151,7 @@ export default function AuthCallback() {
         }
 
         // Check for existing session (might be a page refresh)
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await getSupabaseOrThrow().auth.getSession();
         if (session?.user) {
           const role = await fetchUserRole(session.user.id);
           redirectBasedOnRole(role);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured, getSupabaseOrThrow } from '@/lib/supabase';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 import { Card } from '@/components/ui/card';
@@ -66,7 +66,7 @@ export default function VerifyEmail() {
   const handleCheckStatus = async () => {
     setCheckingStatus(true);
     try {
-      if (!supabase) {
+      if (!isSupabaseConfigured()) {
         toast({
           title: "Service unavailable",
           description: "Authentication service is not available. Please try again later.",
@@ -76,7 +76,7 @@ export default function VerifyEmail() {
       }
       
       // Re-fetch the session to get the latest email_confirmed_at status
-      const { data: { session }, error } = await supabase.auth.getSession();
+      const { data: { session }, error } = await getSupabaseOrThrow().auth.getSession();
       
       if (error) {
         console.error('[Verify Email] Error checking status:', error);

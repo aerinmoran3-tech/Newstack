@@ -1,9 +1,9 @@
-import { supabase } from './supabase';
+import { supabase, isSupabaseConfigured, getSupabaseOrThrow } from './supabase';
 import type { Property, Review } from './types';
 
 // ===================== PROPERTIES =====================
 export async function getProperties(): Promise<Property[]> {
-  if (!supabase) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from('properties')
@@ -16,7 +16,7 @@ export async function getProperties(): Promise<Property[]> {
 }
 
 export async function getPropertyById(id: string): Promise<Property | null> {
-  if (!supabase) return null;
+      if (!isSupabaseConfigured()) return null;
   try {
     const { data, error } = await supabase
       .from('properties')
@@ -31,7 +31,7 @@ export async function getPropertyById(id: string): Promise<Property | null> {
 }
 
 export async function createProperty(property: Omit<Property, 'id'>): Promise<Property | null> {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const { data, error } = await supabase
       .from('properties')
@@ -46,7 +46,7 @@ export async function createProperty(property: Omit<Property, 'id'>): Promise<Pr
 }
 
 export async function updateProperty(id: string, updates: Partial<Property>): Promise<Property | null> {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const { data, error } = await supabase
       .from('properties')
@@ -62,7 +62,7 @@ export async function updateProperty(id: string, updates: Partial<Property>): Pr
 }
 
 export async function deleteProperty(id: string): Promise<boolean> {
-  if (!supabase) return false;
+  if (!isSupabaseConfigured()) return false;
   try {
     const { error } = await supabase
       .from('properties')
@@ -77,7 +77,7 @@ export async function deleteProperty(id: string): Promise<boolean> {
 
 // ===================== APPLICATIONS =====================
 export async function getApplications(userId?: string) {
-  if (!supabase) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     let query = supabase.from('applications').select(`
       *,
@@ -103,7 +103,7 @@ export async function getApplications(userId?: string) {
 }
 
 export async function createApplication(application: any) {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const { data, error } = await supabase
       .from('applications')
@@ -118,7 +118,7 @@ export async function createApplication(application: any) {
 }
 
 export async function updateApplication(id: string, updates: any) {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const { data, error } = await supabase
       .from('applications')
@@ -135,7 +135,7 @@ export async function updateApplication(id: string, updates: any) {
 
 // ===================== REVIEWS =====================
 export async function getReviews(propertyId: string): Promise<Review[]> {
-  if (!supabase) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from('reviews')
@@ -149,7 +149,7 @@ export async function getReviews(propertyId: string): Promise<Review[]> {
 }
 
 export async function createReview(review: Omit<Review, 'id'>) {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     // Let Supabase generate UUID - do not provide manual ID
     const { data, error } = await supabase
@@ -166,7 +166,7 @@ export async function createReview(review: Omit<Review, 'id'>) {
 
 // ===================== FAVORITES =====================
 export async function getFavorites(userId: string) {
-  if (!supabase) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from('favorites')
@@ -180,7 +180,7 @@ export async function getFavorites(userId: string) {
 }
 
 export async function getFavoritesWithProperties(userId: string) {
-  if (!supabase) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from('favorites')
@@ -205,7 +205,7 @@ export async function getFavoritesWithProperties(userId: string) {
 }
 
 export async function addFavorite(userId: string, propertyId: string) {
-  if (!supabase) return false;
+  if (!isSupabaseConfigured()) return false;
   try {
     // Let Supabase generate UUID - do not provide manual ID
     const { error } = await supabase
@@ -219,7 +219,7 @@ export async function addFavorite(userId: string, propertyId: string) {
 }
 
 export async function removeFavorite(userId: string, propertyId: string) {
-  if (!supabase) return false;
+  if (!isSupabaseConfigured()) return false;
   try {
     const { error } = await supabase
       .from('favorites')
@@ -235,7 +235,7 @@ export async function removeFavorite(userId: string, propertyId: string) {
 
 // ===================== INQUIRIES =====================
 export async function createInquiry(inquiry: any) {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     // Let Supabase generate UUID - do not provide manual ID
     const { data, error } = await supabase
@@ -251,7 +251,7 @@ export async function createInquiry(inquiry: any) {
 }
 
 export async function getInquiries() {
-  if (!supabase) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from('inquiries')
@@ -265,7 +265,7 @@ export async function getInquiries() {
 
 // ===================== USERS =====================
 export async function getCurrentUserProfile() {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
@@ -283,7 +283,7 @@ export async function getCurrentUserProfile() {
 }
 
 export async function updateUserProfile(userId: string, updates: any) {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const { data, error } = await supabase
       .from('users')
@@ -299,7 +299,7 @@ export async function updateUserProfile(userId: string, updates: any) {
 }
 
 export async function getAllUsers() {
-  if (!supabase) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from('users')
@@ -313,7 +313,7 @@ export async function getAllUsers() {
 }
 
 export async function updateUserRole(userId: string, role: string) {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const { data, error } = await supabase
       .from('users')
@@ -330,7 +330,7 @@ export async function updateUserRole(userId: string, role: string) {
 
 // ===================== FILE UPLOADS =====================
 export async function uploadPropertyImage(file: File, propertyId: string): Promise<string | null> {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const fileExt = file.name.split('.').pop();
     const fileName = `${propertyId}/${Date.now()}.${fileExt}`;
@@ -352,7 +352,7 @@ export async function uploadPropertyImage(file: File, propertyId: string): Promi
 }
 
 export async function uploadProfileImage(file: File, userId: string): Promise<string | null> {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}/profile.${fileExt}`;
@@ -374,7 +374,7 @@ export async function uploadProfileImage(file: File, userId: string): Promise<st
 }
 
 export async function uploadDocument(file: File, userId: string, applicationId: string): Promise<string | null> {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}/${applicationId}/${Date.now()}_${file.name}`;
@@ -392,7 +392,7 @@ export async function uploadDocument(file: File, userId: string, applicationId: 
 }
 
 export async function getDocumentUrl(filePath: string): Promise<string | null> {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const { data, error } = await supabase.storage
       .from('documents')
@@ -406,7 +406,7 @@ export async function getDocumentUrl(filePath: string): Promise<string | null> {
 }
 
 export async function deletePropertyImages(propertyId: string): Promise<boolean> {
-  if (!supabase) return false;
+  if (!isSupabaseConfigured()) return false;
   try {
     const { data: files } = await supabase.storage
       .from('property-images')
@@ -425,7 +425,7 @@ export async function deletePropertyImages(propertyId: string): Promise<boolean>
 
 // ===================== REQUIREMENTS =====================
 export async function createRequirement(requirement: any) {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const { data, error } = await supabase
       .from('requirements')
@@ -440,7 +440,7 @@ export async function createRequirement(requirement: any) {
 }
 
 export async function getRequirements(userId?: string) {
-  if (!supabase) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     let query = supabase.from('requirements').select('*');
     if (userId) {
@@ -456,7 +456,7 @@ export async function getRequirements(userId?: string) {
 
 // ===================== AGENT DASHBOARD =====================
 export async function getAgentProperties(agentId: string) {
-  if (!supabase) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from('properties')
@@ -471,7 +471,7 @@ export async function getAgentProperties(agentId: string) {
 }
 
 export async function getApplicationsForProperty(propertyId: string) {
-  if (!supabase) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from('applications')
@@ -486,7 +486,7 @@ export async function getApplicationsForProperty(propertyId: string) {
 }
 
 export async function getAgentInquiries(agentId: string) {
-  if (!supabase) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from('inquiries')
@@ -501,7 +501,7 @@ export async function getAgentInquiries(agentId: string) {
 }
 
 export async function updateInquiryStatus(inquiryId: string, status: string) {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const { data, error } = await supabase
       .from('inquiries')
@@ -518,7 +518,7 @@ export async function updateInquiryStatus(inquiryId: string, status: string) {
 
 // ===================== ADMIN DASHBOARD =====================
 export async function getAdminStats() {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const [properties, users, applications, reviews, inquiries] = await Promise.all([
       supabase.from('properties').select('id, property_type, status, price', { count: 'exact' }),
@@ -546,7 +546,7 @@ export async function getAdminStats() {
 }
 
 export async function getAllReviews() {
-  if (!supabase) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from('reviews')
@@ -560,7 +560,7 @@ export async function getAllReviews() {
 }
 
 export async function deleteReview(reviewId: string): Promise<boolean> {
-  if (!supabase) return false;
+  if (!isSupabaseConfigured()) return false;
   try {
     const { error } = await supabase
       .from('reviews')
@@ -575,7 +575,7 @@ export async function deleteReview(reviewId: string): Promise<boolean> {
 
 // ===================== ADMIN USER MANAGEMENT =====================
 export async function createUser(userData: { email: string; full_name: string; role: string }) {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     // Let Supabase generate UUID - do not provide manual ID
     const { data, error } = await supabase
@@ -595,7 +595,7 @@ export async function createUser(userData: { email: string; full_name: string; r
 }
 
 export async function deleteUser(userId: string): Promise<boolean> {
-  if (!supabase) return false;
+  if (!isSupabaseConfigured()) return false;
   try {
     const { error } = await supabase
       .from('users')
@@ -610,7 +610,7 @@ export async function deleteUser(userId: string): Promise<boolean> {
 
 // ===================== SAVED SEARCHES =====================
 export async function getSavedSearches() {
-  if (!supabase) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from('saved_searches')
@@ -624,7 +624,7 @@ export async function getSavedSearches() {
 }
 
 export async function deleteSavedSearch(searchId: string): Promise<boolean> {
-  if (!supabase) return false;
+  if (!isSupabaseConfigured()) return false;
   try {
     const { error } = await supabase
       .from('saved_searches')
@@ -639,10 +639,11 @@ export async function deleteSavedSearch(searchId: string): Promise<boolean> {
 
 // ===================== ADMIN PERSONA MANAGEMENT =====================
 export async function getManagedPersonas() {
+  if (!isSupabaseConfigured()) return [];
   try {
     const response = await fetch('/api/v2/admin/personas', {
       headers: {
-        'Authorization': `Bearer ${(await supabase?.auth.getSession())?.data.session?.access_token}`,
+        'Authorization': `Bearer ${(await getSupabaseOrThrow().auth.getSession()).data.session?.access_token}`,
       },
     });
     const result = await response.json();
@@ -666,12 +667,13 @@ export async function createManagedPersona(personaData: {
   specialties?: string[];
   yearsExperience?: number;
 }) {
+  if (!isSupabaseConfigured()) throw new Error('Supabase not configured');
   try {
     const response = await fetch('/api/v2/admin/personas', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${(await supabase?.auth.getSession())?.data.session?.access_token}`,
+        'Authorization': `Bearer ${(await getSupabaseOrThrow().auth.getSession()).data.session?.access_token}`,
       },
       body: JSON.stringify(personaData),
     });
@@ -695,12 +697,13 @@ export async function updateManagedPersona(personaId: string, updates: {
   specialties?: string[];
   yearsExperience?: number;
 }) {
+  if (!isSupabaseConfigured()) throw new Error('Supabase not configured');
   try {
     const response = await fetch(`/api/v2/admin/personas/${personaId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${(await supabase?.auth.getSession())?.data.session?.access_token}`,
+        'Authorization': `Bearer ${(await getSupabaseOrThrow().auth.getSession()).data.session?.access_token}`,
       },
       body: JSON.stringify(updates),
     });
@@ -714,11 +717,12 @@ export async function updateManagedPersona(personaId: string, updates: {
 }
 
 export async function deleteManagedPersona(personaId: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
   try {
     const response = await fetch(`/api/v2/admin/personas/${personaId}`, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${(await supabase?.auth.getSession())?.data.session?.access_token}`,
+        'Authorization': `Bearer ${(await getSupabaseOrThrow().auth.getSession()).data.session?.access_token}`,
       },
     });
     const result = await response.json();
@@ -731,10 +735,11 @@ export async function deleteManagedPersona(personaId: string): Promise<boolean> 
 }
 
 export async function getAdminSettings() {
+  if (!isSupabaseConfigured()) return {};
   try {
     const response = await fetch('/api/v2/admin/settings', {
       headers: {
-        'Authorization': `Bearer ${(await supabase?.auth.getSession())?.data.session?.access_token}`,
+        'Authorization': `Bearer ${(await getSupabaseOrThrow().auth.getSession()).data.session?.access_token}`,
       },
     });
     const result = await response.json();
@@ -747,12 +752,13 @@ export async function getAdminSettings() {
 }
 
 export async function saveAdminSetting(key: string, value: string) {
+  if (!isSupabaseConfigured()) throw new Error('Supabase not configured');
   try {
     const response = await fetch('/api/v2/admin/settings', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${(await supabase?.auth.getSession())?.data.session?.access_token}`,
+        'Authorization': `Bearer ${(await getSupabaseOrThrow().auth.getSession()).data.session?.access_token}`,
       },
       body: JSON.stringify({ key, value }),
     });
@@ -768,7 +774,7 @@ export async function saveAdminSetting(key: string, value: string) {
 // ===================== MODERATION =====================
 
 export async function getContentReports() {
-  if (!supabase) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from('content_reports')
@@ -794,9 +800,9 @@ export async function createContentReport(report: {
   reportType: string;
   description?: string;
 }) {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
-    const { data: session } = await supabase.auth.getSession();
+    const { data: session } = await getSupabaseOrThrow().auth.getSession();
     const { data, error } = await supabase
       .from('content_reports')
       .insert([{
@@ -822,7 +828,7 @@ export async function updateContentReport(id: string, updates: {
   assignedTo?: string;
   resolution?: string;
 }) {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const updateData: Record<string, any> = {};
     if (updates.status) updateData.status = updates.status;
@@ -831,7 +837,7 @@ export async function updateContentReport(id: string, updates: {
     if (updates.resolution) {
       updateData.resolution = updates.resolution;
       updateData.resolved_at = new Date().toISOString();
-      const { data: session } = await supabase.auth.getSession();
+      const { data: session } = await getSupabaseOrThrow().auth.getSession();
       updateData.resolved_by = session?.session?.user?.id;
     }
     updateData.updated_at = new Date().toISOString();
@@ -851,7 +857,7 @@ export async function updateContentReport(id: string, updates: {
 }
 
 export async function getDisputes() {
-  if (!supabase) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from('disputes')
@@ -880,9 +886,9 @@ export async function createDispute(dispute: {
   subject: string;
   description: string;
 }) {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
-    const { data: session } = await supabase.auth.getSession();
+    const { data: session } = await getSupabaseOrThrow().auth.getSession();
     const { data, error } = await supabase
       .from('disputes')
       .insert([{
@@ -910,7 +916,7 @@ export async function updateDispute(id: string, updates: {
   assignedTo?: string;
   resolution?: string;
 }) {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const updateData: Record<string, any> = {};
     if (updates.status) updateData.status = updates.status;
@@ -919,7 +925,7 @@ export async function updateDispute(id: string, updates: {
     if (updates.resolution) {
       updateData.resolution = updates.resolution;
       updateData.resolved_at = new Date().toISOString();
-      const { data: session } = await supabase.auth.getSession();
+      const { data: session } = await getSupabaseOrThrow().auth.getSession();
       updateData.resolved_by = session?.session?.user?.id;
     }
     updateData.updated_at = new Date().toISOString();
@@ -939,7 +945,7 @@ export async function updateDispute(id: string, updates: {
 }
 
 export async function getDisputeMessages(disputeId: string) {
-  if (!supabase) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from('dispute_messages')
@@ -958,9 +964,9 @@ export async function getDisputeMessages(disputeId: string) {
 }
 
 export async function addDisputeMessage(disputeId: string, message: string, isInternal: boolean = false) {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
-    const { data: session } = await supabase.auth.getSession();
+    const { data: session } = await getSupabaseOrThrow().auth.getSession();
     const { data, error } = await supabase
       .from('dispute_messages')
       .insert([{
@@ -980,7 +986,7 @@ export async function addDisputeMessage(disputeId: string, message: string, isIn
 }
 
 export async function getDocumentVerifications() {
-  if (!supabase) return [];
+  if (!isSupabaseConfigured()) return [];
   try {
     const { data, error } = await supabase
       .from('document_verifications')
@@ -1005,7 +1011,7 @@ export async function updateDocumentVerification(id: string, updates: {
   rejectionReason?: string;
   notes?: string;
 }) {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const updateData: Record<string, any> = {
       status: updates.status,
@@ -1016,7 +1022,7 @@ export async function updateDocumentVerification(id: string, updates: {
     
     if (updates.status === 'verified' || updates.status === 'rejected') {
       updateData.verified_at = new Date().toISOString();
-      const { data: session } = await supabase.auth.getSession();
+      const { data: session } = await getSupabaseOrThrow().auth.getSession();
       updateData.verified_by = session?.session?.user?.id;
     }
 
@@ -1035,7 +1041,7 @@ export async function updateDocumentVerification(id: string, updates: {
 }
 
 export async function flagPropertyListing(propertyId: string, status: string) {
-  if (!supabase) return null;
+  if (!isSupabaseConfigured()) return null;
   try {
     const { data, error } = await supabase
       .from('properties')

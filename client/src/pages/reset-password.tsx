@@ -10,7 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useState, useEffect, useMemo } from 'react';
 import { z } from 'zod';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured, getSupabaseOrThrow } from '@/lib/supabase';
 
 // Password requirements must match signup requirements: 8+ chars, uppercase, number
 const resetPasswordSchema = z.object({
@@ -69,9 +69,9 @@ export default function ResetPassword() {
         return;
       }
       
-      if (type === 'recovery' && accessToken && supabase) {
+      if (type === 'recovery' && accessToken && isSupabaseConfigured()) {
         try {
-          const { error } = await supabase.auth.setSession({
+          const { error } = await getSupabaseOrThrow().auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken || '',
           });
@@ -95,9 +95,9 @@ export default function ResetPassword() {
   const onSubmit = async (data: ResetPasswordInput) => {
     setLoading(true);
     try {
-      if (!supabase) throw new Error('Authentication service unavailable');
+      if (!isSupabaseConfigured()) throw new Error('Authentication service unavailable');
       
-      const { error } = await supabase.auth.updateUser({
+      const { error } = await getSupabaseOrThrow().auth.updateUser({
         password: data.password,
       });
       

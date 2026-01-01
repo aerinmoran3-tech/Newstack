@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { isSupabaseConfigured, getSupabaseOrThrow } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 
 export interface SupabaseUploadResponse {
@@ -23,9 +23,10 @@ export function useSupabaseUpload(options: UseSupabaseUploadOptions = {}) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  if (!isSupabaseConfigured()) {
+    console.warn('[useSupabaseUpload] Supabase not configured — upload disabled');
+  }
+  const supabase = isSupabaseConfigured() ? getSupabaseOrThrow() : null;
 
   const uploadImage = async (file: File): Promise<SupabaseUploadResponse | null> => {
     const maxSize = (options.maxSize || 10) * 1024 * 1024;
@@ -61,7 +62,7 @@ export function useSupabaseUpload(options: UseSupabaseUploadOptions = {}) {
 
       console.log(`[UPLOAD] Attempting to upload to bucket: ${bucket}, path: ${filePath}`);
 
-      const { data, error } = await supabase.storage
+      const { data, error } = await getSupabaseOrThrow().storage
         .from(bucket)
         .upload(filePath, file, {
           cacheControl: '3600',
@@ -73,7 +74,7 @@ export function useSupabaseUpload(options: UseSupabaseUploadOptions = {}) {
         throw new Error(error.message);
       }
 
-      const { data: publicData } = supabase.storage
+      const { data: publicData } = getSupabaseOrThrow().storage
         .from(bucket)
         .getPublicUrl(data.path);
 
