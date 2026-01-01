@@ -11,7 +11,12 @@ import { logImageAudit } from "../image-audit";
 import { checkPropertyImageLimit, validateFileSize } from "../upload-limits";
 
 export function registerImageKitRoutes(app: Express): void {
-  app.post("/api/imagekit/upload-token", authenticateToken, async (req: AuthenticatedRequest, res) => {
+  // NOTE: The frontend contains two different upload flows (ImageKit and Supabase).
+  // By default this project uses Supabase Storage. Return a clear, machine-readable
+  // response that indicates ImageKit client-side upload is not configured so
+  // `use-imagekit-upload` can fall back gracefully instead of receiving an
+  // unexpected payload.
+  async function handleUploadToken(req: AuthenticatedRequest, res: any) {
     try {
       const uploadRoles = ["admin", "owner", "agent", "landlord", "property_manager"];
       if (!uploadRoles.includes(req.user!.role)) {
@@ -25,14 +30,20 @@ export function registerImageKitRoutes(app: Express): void {
         return res.status(403).json({ error: "Your role does not have permission to upload" });
       }
 
-      return res.json(success({
-        message: "Using Supabase Storage"
-      }, "Client-side upload enabled"));
+      // Explicitly indicate ImageKit is not configured. The client should detect
+      // this and either use the Supabase upload flow or present a helpful message.
+      return res.status(200).json(success({
+        enabled: false,
+        provider: 'supabase',
+        message: 'ImageKit client uploads are not enabled on this deployment. Use Supabase Storage upload flow.'
+      }, 'Image upload provider info'));
     } catch (err: any) {
       console.error("[UPLOAD] Token error:", err);
       return res.status(500).json(errorResponse("Failed to generate upload token"));
     }
-  });
+  }
+
+  app.post("/api/imagekit/upload-token", authenticateToken, handleUploadToken as any);
 
   app.post("/api/photos", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
@@ -540,4 +551,9 @@ export function registerImageKitRoutes(app: Express): void {
       return res.status(500).json(errorResponse("Failed to replace photo"));
     }
   });
+
+  // Export handler for testing
+  return { handleUploadToken } as any;
 }
+
+export type ImageKitRoutesExports = ReturnType<typeof registerImageKitRoutes>;

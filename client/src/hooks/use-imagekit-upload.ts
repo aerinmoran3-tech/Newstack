@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { useSupabaseUpload } from '@/hooks/use-supabase-upload';
 
 export interface ImageKitUploadResponse {
   fileId: string;
@@ -34,6 +35,9 @@ export function useImageKitUpload(options: UseImageKitUploadOptions = {}) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  // Also initialize Supabase upload hook so we can fallback if ImageKit isn't enabled
+  const { uploadImage: supabaseUpload } = useSupabaseUpload({ folder: options.folder, maxSize: options.maxSize });
+
   const uploadImage = async (
     file: File
   ): Promise<ImageKitUploadResponse | null> => {
@@ -64,13 +68,35 @@ export function useImageKitUpload(options: UseImageKitUploadOptions = {}) {
     try {
       // Step 1: Get upload token from backend
       const tokenResponse = await apiRequest('POST', '/api/imagekit/upload-token');
-      const tokenData = (await tokenResponse.json()) as { data: ImageKitTokenResponse };
-      
-      if (!tokenData.data) {
-        throw new Error('Failed to get upload token');
+      const tokenPayload = (await tokenResponse.json()).data as ImageKitTokenResponse | undefined;
+
+      // If server indicates ImageKit is not enabled, fallback to Supabase upload flow
+      if (!tokenPayload || (tokenPayload as any).enabled === false) {
+        console.warn('[ImageKit] ImageKit not enabled; falling back to Supabase upload');
+        const supResp = await supabaseUpload(file);
+        if (!supResp) throw new Error('Supabase upload failed');
+
+        const fallback: ImageKitUploadResponse = {
+          fileId: supResp.fileId,
+          name: supResp.name,
+          size: supResp.size,
+          filePath: supResp.filePath,
+          url: supResp.url,
+          thumbnailUrl: supResp.thumbnailUrl,
+          height: undefined,
+          width: undefined,
+          type: supResp.type,
+        };
+
+        toast({
+          title: 'Image Uploaded',
+          description: `${file.name} uploaded via Supabase`,
+        });
+
+        return fallback;
       }
 
-      const { token, signature, expire, publicKey, urlEndpoint } = tokenData.data;
+      const { token, signature, expire, publicKey, urlEndpoint } = tokenPayload;
 
       // Step 2: Prepare FormData for ImageKit upload
       const formData = new FormData();

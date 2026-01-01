@@ -17,13 +17,18 @@ var __export = (target, all) => {
 // server/supabase.ts
 var supabase_exports = {};
 __export(supabase_exports, {
+  default: () => supabase,
   getSupabaseOrThrow: () => getSupabaseOrThrow,
   isSupabaseConfigured: () => isSupabaseConfigured,
+  setSupabaseClient: () => setSupabaseClient,
   supabase: () => supabase,
   testSupabaseConnection: () => testSupabaseConnection,
   validateSupabaseConnection: () => validateSupabaseConnection
 });
 import { createClient } from "@supabase/supabase-js";
+function setSupabaseClient(client) {
+  supabase = client;
+}
 function isSupabaseConfigured() {
   return supabase !== null;
 }
@@ -60,7 +65,6 @@ async function validateSupabaseConnection() {
 var supabaseUrl, supabaseServiceKey, supabase;
 var init_supabase = __esm({
   "server/supabase.ts"() {
-    "use strict";
     supabaseUrl = process.env.SUPABASE_URL;
     supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     supabase = null;
@@ -502,7 +506,6 @@ function getPaymentReceiptEmailTemplate(data) {
 }
 var init_email = __esm({
   "server/email.ts"() {
-    "use strict";
   }
 });
 
@@ -910,7 +913,6 @@ async function setApplicationExpiration(applicationId, daysUntilExpiration = 30)
 var STATUS_TRANSITIONS;
 var init_application_service = __esm({
   "server/application-service.ts"() {
-    "use strict";
     init_supabase();
     init_email();
     STATUS_TRANSITIONS = {
@@ -5577,11 +5579,45 @@ async function registerRoutes(app2) {
       if (!validation.success) {
         return res.status(400).json({ error: validation.error.errors[0].message });
       }
-      const propertyData = {
-        ...validation.data,
-        owner_id: req.user.id
+      const src = validation.data;
+      const dbPayload = { owner_id: req.user.id };
+      const fieldMap = {
+        ownerId: "owner_id",
+        listingAgentId: "listing_agent_id",
+        agencyId: "agency_id",
+        zipCode: "zip_code",
+        squareFeet: "square_feet",
+        propertyType: "property_type",
+        petsAllowed: "pets_allowed",
+        leaseTerm: "lease_term",
+        utilitiesIncluded: "utilities_included",
+        listingStatus: "listing_status",
+        visibility: "visibility",
+        expiresAt: "expires_at",
+        autoUnpublish: "auto_unpublish",
+        expirationDays: "expiration_days",
+        priceHistory: "price_history",
+        viewCount: "view_count",
+        saveCount: "save_count",
+        applicationCount: "application_count",
+        listedAt: "listed_at",
+        soldAt: "sold_at",
+        soldPrice: "sold_price",
+        scheduledPublishAt: "scheduled_publish_at",
+        addressVerified: "address_verified",
+        applicationFee: "application_fee"
       };
-      const { data, error: error2 } = await supabase.from("properties").insert([propertyData]).select();
+      for (const [k, v] of Object.entries(src)) {
+        if (v === void 0) continue;
+        if (fieldMap[k]) {
+          dbPayload[fieldMap[k]] = v;
+          continue;
+        }
+        dbPayload[k] = v;
+      }
+      if (dbPayload.price !== void 0) dbPayload.price = String(dbPayload.price);
+      if (dbPayload.bathrooms !== void 0) dbPayload.bathrooms = String(dbPayload.bathrooms);
+      const { data, error: error2 } = await supabase.from("properties").insert([dbPayload]).select();
       if (error2) throw error2;
       cache.invalidate("properties:");
       return res.json(success(data[0], "Property created successfully"));

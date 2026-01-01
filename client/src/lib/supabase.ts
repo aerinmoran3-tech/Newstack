@@ -13,43 +13,50 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-let supabase: SupabaseClient | null = null;
+let _supabase: SupabaseClient | null = null;
 
 // Validate configuration and create client
 if (supabaseUrl && supabaseKey) {
-  supabase = createClient(supabaseUrl, supabaseKey);
+  _supabase = createClient(supabaseUrl, supabaseKey);
 } else {
-  // Log clear guidance for missing configuration
   const missing: string[] = [];
   if (!supabaseUrl) missing.push('VITE_SUPABASE_URL');
   if (!supabaseKey) missing.push('VITE_SUPABASE_ANON_KEY');
-  
   console.error(
     `[SUPABASE] Configuration incomplete. Missing: ${missing.join(', ')}\n` +
     'Authentication and database features will not work.\n' +
-    'Add these variables to Replit Secrets. See SETUP.md for instructions.'
+    'Add these variables to Replit Secrets or .env. See SETUP.md for instructions.'
   );
 }
 
-/**
- * Returns true if Supabase is properly configured.
- */
 export function isSupabaseConfigured(): boolean {
-  return supabase !== null;
+  return _supabase !== null;
 }
 
-/**
- * Gets the Supabase client, throwing if not configured.
- * Use this when Supabase is required for an operation.
- */
 export function getSupabaseOrThrow(): SupabaseClient {
-  if (!supabase) {
+  if (!_supabase) {
     throw new Error(
-      'Supabase is not configured. ' +
-      'Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to Replit Secrets.'
+      'Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment.'
     );
   }
-  return supabase;
+  return _supabase;
 }
 
-export { supabase };
+// Export a safe proxy object so property access fails with a helpful message
+const supabaseProxy = new Proxy({}, {
+  get(_, prop) {
+    if (_supabase) {
+      // @ts-expect-error delegate to real client if available
+      return (_supabase as any)[prop];
+    }
+    throw new Error(`[SUPABASE] Client not configured. Missing VITE variables. Accessed property: ${String(prop)}`);
+  },
+  apply(_, thisArg, args) {
+    if (_supabase) {
+      return (_supabase as any).apply(thisArg, args);
+    }
+    throw new Error('[SUPABASE] Client not configured. Missing VITE variables.');
+  }
+}) as unknown as SupabaseClient;
+
+export const supabase = _supabase ?? supabaseProxy;

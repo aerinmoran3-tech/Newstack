@@ -15,6 +15,11 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 let supabase: SupabaseClient | null = null;
 
+// Testing helper: allows injecting a mock Supabase client at runtime for tests
+export function setSupabaseClient(client: SupabaseClient | null) {
+  supabase = client;
+}
+
 // Validate configuration and create client
 if (supabaseUrl && supabaseServiceKey) {
   // Validate URL format
@@ -94,3 +99,5 @@ export async function validateSupabaseConnection(): Promise<void> {
 }
 
 export { supabase };
+
+export { supabase as default };

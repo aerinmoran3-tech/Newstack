@@ -797,14 +797,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: validation.error.errors[0].message });
       }
 
-      const propertyData = {
-        ...validation.data,
-        owner_id: req.user!.id,
+      // Normalize keys from camelCase (client) to snake_case (DB) for Supabase insert.
+      const src = validation.data as Record<string, any>;
+      const dbPayload: Record<string, any> = { owner_id: req.user!.id };
+
+      const fieldMap: Record<string, string> = {
+        ownerId: 'owner_id',
+        listingAgentId: 'listing_agent_id',
+        agencyId: 'agency_id',
+        zipCode: 'zip_code',
+        squareFeet: 'square_feet',
+        propertyType: 'property_type',
+        petsAllowed: 'pets_allowed',
+        leaseTerm: 'lease_term',
+        utilitiesIncluded: 'utilities_included',
+        listingStatus: 'listing_status',
+        visibility: 'visibility',
+        expiresAt: 'expires_at',
+        autoUnpublish: 'auto_unpublish',
+        expirationDays: 'expiration_days',
+        priceHistory: 'price_history',
+        viewCount: 'view_count',
+        saveCount: 'save_count',
+        applicationCount: 'application_count',
+        listedAt: 'listed_at',
+        soldAt: 'sold_at',
+        soldPrice: 'sold_price',
+        scheduledPublishAt: 'scheduled_publish_at',
+        addressVerified: 'address_verified',
+        applicationFee: 'application_fee',
       };
+
+      for (const [k, v] of Object.entries(src)) {
+        if (v === undefined) continue;
+        if (fieldMap[k]) {
+          dbPayload[fieldMap[k]] = v;
+          continue;
+        }
+
+        // Keep other fields using their DB column names (many schema fields already use camelCase keys in the schema helper)
+        dbPayload[k] = v;
+      }
+
+      // Ensure numeric/decimal fields are strings for DB where appropriate
+      if (dbPayload.price !== undefined) dbPayload.price = String(dbPayload.price);
+      if (dbPayload.bathrooms !== undefined) dbPayload.bathrooms = String(dbPayload.bathrooms);
 
       const { data, error } = await supabase
         .from("properties")
-        .insert([propertyData])
+        .insert([dbPayload])
         .select();
 
       if (error) throw error;

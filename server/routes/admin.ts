@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { supabase } from "../supabase";
 import { authenticateToken, requireRole, type AuthenticatedRequest } from "../auth-middleware";
 import { success, error as errorResponse } from "../response";
+import { USER_ROLES } from "@shared/constants";
 
 export function registerAdminRoutes(app: Express): void {
   app.get("/api/admin/personas", authenticateToken, requireRole("admin"), async (req: AuthenticatedRequest, res) => {
@@ -57,6 +58,47 @@ export function registerAdminRoutes(app: Express): void {
         return res.status(400).json(errorResponse("A user with this email already exists"));
       }
       return res.status(500).json(errorResponse("Failed to create persona"));
+    }
+  });
+
+  // Admin-only endpoint to change a user's role safely.
+  app.patch("/api/admin/users/:id/role", authenticateToken, requireRole("admin"), async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.params.id;
+      const { role } = req.body;
+
+      if (!role) {
+        return res.status(400).json(errorResponse("Role is required"));
+      }
+
+      // Validate role against allowed application roles
+      const allowedRoles = Object.values(USER_ROLES);
+      if (!allowedRoles.includes(role)) {
+        return res.status(400).json(errorResponse("Invalid role"));
+      }
+
+      const { data: existing, error: checkError } = await supabase
+        .from("users")
+        .select("id, role")
+        .eq("id", userId)
+        .single();
+
+      if (checkError || !existing) {
+        return res.status(404).json(errorResponse("User not found"));
+      }
+
+      const { data, error } = await supabase
+        .from("users")
+        .update({ role, updated_at: new Date().toISOString() })
+        .eq("id", userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return res.json(success(data, "User role updated successfully"));
+    } catch (err: any) {
+      console.error("[ADMIN] Update user role error:", err);
+      return res.status(500).json(errorResponse("Failed to update user role"));
     }
   });
 
@@ -178,4 +220,53 @@ export function registerAdminRoutes(app: Express): void {
       return res.status(500).json(errorResponse("Failed to save setting"));
     }
   });
+
+  // Expose handler for role updates so it can be tested in isolation
+  // (also used by the registered route above)
+  async function handleUpdateUserRole(req: AuthenticatedRequest, res: any) {
+    try {
+      const userId = req.params.id;
+      const { role } = req.body;
+
+      if (!role) {
+        return res.status(400).json(errorResponse("Role is required"));
+      }
+
+      // Validate role against allowed application roles
+      const allowedRoles = Object.values(USER_ROLES);
+      if (!allowedRoles.includes(role)) {
+        return res.status(400).json(errorResponse("Invalid role"));
+      }
+
+      const { data: existing, error: checkError } = await supabase
+        .from("users")
+        .select("id, role")
+        .eq("id", userId)
+        .single();
+
+      if (checkError || !existing) {
+        return res.status(404).json(errorResponse("User not found"));
+      }
+
+      const { data, error } = await supabase
+        .from("users")
+        .update({ role, updated_at: new Date().toISOString() })
+        .eq("id", userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return res.json(success(data, "User role updated successfully"));
+    } catch (err: any) {
+      console.error("[ADMIN] Update user role error:", err);
+      return res.status(500).json(errorResponse("Failed to update user role"));
+    }
+  }
+
+  app.patch("/api/admin/users/:id/role", authenticateToken, requireRole("admin"), handleUpdateUserRole as any);
+
+  // export for tests
+  return { handleUpdateUserRole } as any;
 }
+
+export type AdminRoutesExports = ReturnType<typeof registerAdminRoutes>;

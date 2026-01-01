@@ -166,15 +166,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateUserRole = async (role: UserRole) => {
     if (!user) throw new Error('No user');
 
-    await supabase.auth.updateUser({ data: { role } });
+    // Use server-side endpoint to change role to avoid client-side privilege escalation
+    const tokenRes = await supabase.auth.getSession();
+    const token = tokenRes?.data?.session?.access_token || null;
 
-    await supabase.from('users').upsert({
-      id: user.id,
-      email: user.email,
-      full_name: user.full_name,
-      role
+    const resp = await fetch(`/api/admin/users/${user.id}/role`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+      body: JSON.stringify({ role }),
     });
 
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}));
+      throw new Error(body?.error || body?.message || 'Failed to update role');
+    }
+
+    // Update local state after successful server-side change
     setUser({ ...user, role, needs_role_selection: false });
   };
 
