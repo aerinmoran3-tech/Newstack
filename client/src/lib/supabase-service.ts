@@ -33,14 +33,28 @@ export async function getPropertyById(id: string): Promise<Property | null> {
 export async function createProperty(property: Omit<Property, 'id'>): Promise<Property | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    const { data, error } = await supabase
-      .from('properties')
-      .insert([property])
-      .select()
-      .single();
-    if (error) throw error;
-    return data || null;
+    // Get current session token to authenticate with server API
+    const sessionResp = await getSupabaseOrThrow().auth.getSession();
+    const token = sessionResp?.data?.session?.access_token || null;
+
+    const res = await fetch('/api/properties', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(property),
+    });
+
+    if (!res.ok) {
+      console.error('[createProperty] Server returned', res.status, await res.text());
+      return null;
+    }
+
+    const json = await res.json();
+    return json?.data || null;
   } catch (err) {
+    console.error('[createProperty] Error:', err);
     return null;
   }
 }
