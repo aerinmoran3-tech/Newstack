@@ -88,7 +88,12 @@ export default function LandlordProperties() {
   const [showNewPropertyForm, setShowNewPropertyForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
-  const { uploadImage, isUploading } = useSupabaseUpload({ folder: 'properties', maxSize: 5 });
+  const { uploadImage, isUploading } = useSupabaseUpload({
+    folder: 'properties',
+    maxSize: 5,
+    postMetadata: !!editingId,
+    propertyId: editingId,
+  });
   const { properties, loading, createProperty, updateProperty, deleteProperty } =
     useOwnedProperties();
 

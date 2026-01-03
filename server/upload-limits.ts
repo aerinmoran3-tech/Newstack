@@ -2,8 +2,8 @@
  * Upload limit configuration to prevent abuse and cost overrun
  */
 
-// Maximum number of images per property
-export const MAX_IMAGES_PER_PROPERTY = 50;
+// Maximum number of images per property (keep in sync with client UI limit)
+export const MAX_IMAGES_PER_PROPERTY = 25;
 
 // Maximum file size in bytes (10 MB)
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;

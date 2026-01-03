@@ -17,6 +17,11 @@ interface UseSupabaseUploadOptions {
   folder?: string;
   onUploadComplete?: (response: SupabaseUploadResponse) => void;
   maxSize?: number;
+  // If true, POST photo metadata to `/api/photos` after upload. Default false to avoid
+  // creating orphaned photo rows when property is created later.
+  postMetadata?: boolean;
+  // Optional propertyId to associate metadata with an existing property.
+  propertyId?: string | null;
 }
 
 export function useSupabaseUpload(options: UseSupabaseUploadOptions = {}) {
@@ -89,51 +94,56 @@ export function useSupabaseUpload(options: UseSupabaseUploadOptions = {}) {
         type: file.type,
       };
 
-      // Attempt to save metadata server-side so inserts use the service role (bypass RLS)
-      (async () => {
-        try {
-          const token = await getAuthToken();
-          if (!token) return;
+      // Optionally save metadata server-side. Disabled by default to prevent
+      // creating orphaned photo rows when a property doesn't exist yet.
+      const postMetadata = options.postMetadata ?? false;
+      const propId = options.propertyId ?? null;
+      if (postMetadata) {
+        (async () => {
+          try {
+            const token = await getAuthToken();
+            if (!token) return;
 
-          const body = {
-            imageKitFileId: uploadResponse.filePath,
-            url: uploadResponse.url,
-            thumbnailUrl: uploadResponse.thumbnailUrl,
-            category: 'property',
-            propertyId: null,
-            metadata: { fileSize: uploadResponse.size, filePath: uploadResponse.filePath },
-          };
+            const body = {
+              imageKitFileId: uploadResponse.filePath,
+              url: uploadResponse.url,
+              thumbnailUrl: uploadResponse.thumbnailUrl,
+              category: 'property',
+              propertyId: propId,
+              metadata: { fileSize: uploadResponse.size, filePath: uploadResponse.filePath },
+            };
 
-          // show a UI indicator that metadata is being saved
-          toast({ title: 'Saving metadata', description: 'Saving image metadata to server' });
+            // show a UI indicator that metadata is being saved
+            toast({ title: 'Saving metadata', description: 'Saving image metadata to server' });
 
-          const resp = await fetch('/api/photos', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(body),
-          });
+            const resp = await fetch('/api/photos', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify(body),
+            });
 
-          if (!resp.ok) {
-            const text = await resp.text().catch(() => '');
-            console.warn('[UPLOAD] failed to persist photo metadata:', resp.status, text);
+            if (!resp.ok) {
+              const text = await resp.text().catch(() => '');
+              console.warn('[UPLOAD] failed to persist photo metadata:', resp.status, text);
+              toast({
+                title: 'Upload metadata failed',
+                description: 'Image uploaded but server failed to save metadata',
+                variant: 'destructive',
+              });
+            }
+          } catch (err: any) {
+            console.warn('[UPLOAD] error saving photo metadata:', err);
             toast({
-              title: 'Upload metadata failed',
-              description: 'Image uploaded but server failed to save metadata',
+              title: 'Upload metadata error',
+              description: err?.message || 'Failed to save upload metadata',
               variant: 'destructive',
             });
           }
-        } catch (err: any) {
-          console.warn('[UPLOAD] error saving photo metadata:', err);
-          toast({
-            title: 'Upload metadata error',
-            description: err?.message || 'Failed to save upload metadata',
-            variant: 'destructive',
-          });
-        }
-      })();
+        })();
+      }
 
       setUploadProgress(100);
       options.onUploadComplete?.(uploadResponse);

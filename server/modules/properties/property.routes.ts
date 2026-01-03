@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { authenticateToken, requireOwnership, type AuthenticatedRequest } from "../../auth-middleware";
+import { authenticateToken, requireOwnership, requireRole, type AuthenticatedRequest } from "../../auth-middleware";
+import { getSupabaseOrThrow } from "../../supabase";
 import { success, error as errorResponse } from "../../response";
 import { viewLimiter } from "../../rate-limit";
 import * as propertyService from "./property.service";
@@ -87,3 +88,47 @@ router.post("/:id/view", viewLimiter, async (req, res) => {
 });
 
 export default router;
+
+// Admin helper: reconcile orphan photos (photos without property_id) by matching
+// their URL to a property's `images` JSON array. This helps recover photos
+// that were uploaded before a property was created.
+router.post(
+  "/reconcile-photos",
+  authenticateToken,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const supabase = getSupabaseOrThrow();
+      const { data: orphanPhotos } = await supabase
+        .from("photos")
+        .select("id, url")
+        .is("property_id", null)
+        .limit(200);
+
+      const reconciled: { photoId: string; propertyId: string }[] = [];
+
+      for (const p of orphanPhotos || []) {
+        try {
+          const { data: matched } = await supabase
+            .from("properties")
+            .select("id")
+            .contains("images", [p.url])
+            .limit(1)
+            .single();
+
+          if (matched?.id) {
+            await supabase.from("photos").update({ property_id: matched.id }).eq("id", p.id);
+            reconciled.push({ photoId: p.id, propertyId: matched.id });
+          }
+        } catch (e) {
+          // ignore per-photo errors
+          console.warn("[RECONCILE] error matching photo", p.id, e);
+        }
+      }
+
+      return res.json({ success: true, reconciled });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || "Failed to reconcile photos" });
+    }
+  }
+);
