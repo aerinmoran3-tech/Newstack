@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured, getSupabaseOrThrow } from './supabase';
+import { getAuthToken } from '@/lib/auth-context';
 import type { Property, Review } from './types';
 
 // ===================== PROPERTIES =====================
@@ -359,6 +360,40 @@ export async function uploadPropertyImage(file: File, propertyId: string): Promi
       .from('property-images')
       .getPublicUrl(fileName);
     
+    // Attempt to persist metadata server-side so the server (service role) inserts the row
+    (async () => {
+      try {
+        const sessionResp = await getSupabaseOrThrow().auth.getSession();
+        const token = sessionResp?.data?.session?.access_token || null;
+        if (!token) return;
+
+        const body = {
+          imageKitFileId: fileName,
+          url: data.publicUrl,
+          thumbnailUrl: data.publicUrl,
+          category: 'property',
+          propertyId,
+          metadata: { fileSize: file.size, filePath: fileName },
+        };
+
+        const resp = await fetch('/api/photos', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(body),
+        });
+
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => '');
+          console.warn('[uploadPropertyImage] failed to persist photo metadata:', resp.status, text);
+        }
+      } catch (err) {
+        console.warn('[uploadPropertyImage] error saving photo metadata:', err);
+      }
+    })();
+
     return data.publicUrl;
   } catch (err) {
     return null;
@@ -381,6 +416,31 @@ export async function uploadProfileImage(file: File, userId: string): Promise<st
       .from('profile-images')
       .getPublicUrl(fileName);
     
+    // Attempt to persist the user's profile image URL server-side
+    (async () => {
+      try {
+        const sessionResp = await getSupabaseOrThrow().auth.getSession();
+        const token = sessionResp?.data?.session?.access_token || null;
+        if (!token) return;
+
+        const resp = await fetch(`/api/users/${encodeURIComponent(userId)}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ profile_image: data.publicUrl }),
+        });
+
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => '');
+          console.warn('[uploadProfileImage] failed to persist profile image:', resp.status, text);
+        }
+      } catch (err) {
+        console.warn('[uploadProfileImage] error saving profile image:', err);
+      }
+    })();
+
     return data.publicUrl;
   } catch (err) {
     return null;

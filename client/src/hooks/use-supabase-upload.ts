@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { isSupabaseConfigured, getSupabaseOrThrow } from '@/lib/supabase';
+import { getAuthToken } from '@/lib/auth-context';
 import { useToast } from '@/hooks/use-toast';
 
 export interface SupabaseUploadResponse {
@@ -87,6 +88,52 @@ export function useSupabaseUpload(options: UseSupabaseUploadOptions = {}) {
         thumbnailUrl: publicData.publicUrl,
         type: file.type,
       };
+
+      // Attempt to save metadata server-side so inserts use the service role (bypass RLS)
+      (async () => {
+        try {
+          const token = await getAuthToken();
+          if (!token) return;
+
+          const body = {
+            imageKitFileId: uploadResponse.filePath,
+            url: uploadResponse.url,
+            thumbnailUrl: uploadResponse.thumbnailUrl,
+            category: 'property',
+            propertyId: null,
+            metadata: { fileSize: uploadResponse.size, filePath: uploadResponse.filePath },
+          };
+
+          // show a UI indicator that metadata is being saved
+          toast({ title: 'Saving metadata', description: 'Saving image metadata to server' });
+
+          const resp = await fetch('/api/photos', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(body),
+          });
+
+          if (!resp.ok) {
+            const text = await resp.text().catch(() => '');
+            console.warn('[UPLOAD] failed to persist photo metadata:', resp.status, text);
+            toast({
+              title: 'Upload metadata failed',
+              description: 'Image uploaded but server failed to save metadata',
+              variant: 'destructive',
+            });
+          }
+        } catch (err: any) {
+          console.warn('[UPLOAD] error saving photo metadata:', err);
+          toast({
+            title: 'Upload metadata error',
+            description: err?.message || 'Failed to save upload metadata',
+            variant: 'destructive',
+          });
+        }
+      })();
 
       setUploadProgress(100);
       options.onUploadComplete?.(uploadResponse);
